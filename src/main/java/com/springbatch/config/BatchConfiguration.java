@@ -93,13 +93,14 @@ public class BatchConfiguration {
 		itemReader.setDataSource(dataSource);
 		
 		SqlPagingQueryProviderFactoryBean factory = new SqlPagingQueryProviderFactoryBean();
+		factory.setDataSource(dataSource);
 		factory.setSelectClause("select PRODUCT_ID, PRODUCT_NAME, PRODUCT_CATEGORY, PRODUCT_PRICE");
 		factory.setFromClause("from PRODUCT_DETAILS");
 		factory.setSortKey("PRODUCT_ID");
 		
 		itemReader.setQueryProvider(factory.getObject());
 		itemReader.setRowMapper(new ProductRowMapper());
-		itemReader.setPageSize(3);
+		itemReader.setPageSize(2);
 		
 		return itemReader;
 	}
