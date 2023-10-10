@@ -14,11 +14,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.batch.item.ItemReader; // Use the correct import
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.mapping.DefaultLineMapper;
+import org.springframework.batch.item.file.transform.BeanWrapperFieldExtractor;
+import org.springframework.batch.item.file.transform.DelimitedLineAggregator;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
+import org.springframework.batch.item.file.FlatFileItemWriter;
 
 import com.springbatch.domain.Product;
 import com.springbatch.reader.ProductNameItemReader;
@@ -104,7 +108,45 @@ public class BatchConfiguration {
 		
 		return itemReader;
 	}
+	
+	@Bean
+	public ItemWriter<Product> flatFileItemWriter() throws Exception {
+		FlatFileItemWriter<Product> itemWriter = new FlatFileItemWriter<>();
+		itemWriter.setResource(new FileSystemResource("output/Product_Details_Output.csv"));
+		;
+		DelimitedLineAggregator<Product> lineAggregator = new DelimitedLineAggregator<>();
+		lineAggregator.setDelimiter(",");
+		
+		BeanWrapperFieldExtractor<Product> fieldExtractor = new BeanWrapperFieldExtractor<>();
+		fieldExtractor.setNames(new String[] {"productId", "productName", "productCategory", "productPrice"});
+		
+		lineAggregator.setFieldExtractor(fieldExtractor);
+		
+		itemWriter.setLineAggregator(lineAggregator);
+		
+		return itemWriter;
+	}
+	
+	
 
+//    @Bean
+//    public Step step1() throws Exception {
+//        return this.stepBuilderFactory.get("chunkBasedStep1")
+//                .<Product, Product>chunk(3)
+////                .reader(flatFileItemReader())
+////                .reader(jdbcCursorItemReader())
+//                .reader(jdbcPagingItemReader())
+//                .writer(new ItemWriter<Product>() {
+//                
+//                @Override
+//                public void write(List<? extends Product> items) throws Exception {
+//        		System.out.println("Chunk processing started");
+//        		items.forEach(System.out::println);
+//        		System.out.println("Chunk processing ended");
+//        	}
+//        }).build();
+//    }
+    
     @Bean
     public Step step1() throws Exception {
         return this.stepBuilderFactory.get("chunkBasedStep1")
@@ -112,15 +154,7 @@ public class BatchConfiguration {
 //                .reader(flatFileItemReader())
 //                .reader(jdbcCursorItemReader())
                 .reader(jdbcPagingItemReader())
-                .writer(new ItemWriter<Product>() {
-                
-                @Override
-                public void write(List<? extends Product> items) throws Exception {
-        		System.out.println("Chunk processing started");
-        		items.forEach(System.out::println);
-        		System.out.println("Chunk processing ended");
-        	}
-        }).build();
+                .writer(flatFileItemWriter()).build();
     }
 
     @Bean
