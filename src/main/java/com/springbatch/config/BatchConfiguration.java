@@ -27,10 +27,11 @@ import org.springframework.batch.item.file.FlatFileItemWriter;
 import com.springbatch.domain.Product;
 import com.springbatch.reader.ProductNameItemReader;
 import com.springbatch.domain.ProductFieldSetMapper;
+import com.springbatch.domain.ProductItemPreparedStatementSetter;
 import com.springbatch.domain.ProductRowMapper;
 
 import org.springframework.batch.item.database.JdbcCursorItemReader;
-import org.springframework.batch.item.database.JdbcCursorItemWriter;
+import org.springframework.batch.item.database.JdbcBatchItemWriter;	
 import org.springframework.batch.item.database.JdbcPagingItemReader;
 import org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean;
 
@@ -83,7 +84,7 @@ public class BatchConfiguration {
 	}
 	
 	@Bean
-	public ItemReader<Product> jdbcCursorItemReader() {
+	public ItemReader<Product> jdbcCursorItemReader1() {
 		JdbcCursorItemReader<Product> itemReader = new JdbcCursorItemReader<>();
 		itemReader.setDataSource(dataSource);
 		itemReader.setSql("select * from PRODUCT_DETAILS order by product_id");
@@ -130,32 +131,6 @@ public class BatchConfiguration {
 	
 	
 
-    @Bean
-    public Step step1() throws Exception {
-        return this.stepBuilderFactory.get("chunkBasedStep1")
-                .<Product, Product>chunk(3)
-//                .reader(flatFileItemReader())
-//                .reader(jdbcCursorItemReader())
-                .reader(jdbcPagingItemReader())
-                .writer(new ItemWriter<Product>() {
-                
-                @Override
-                public void write(List<? extends Product> items) throws Exception {
-        		System.out.println("Chunk processing started");
-        		items.forEach(System.out::println);
-        		System.out.println("Chunk processing ended");
-        	}
-        }).build();
-    }
-	
-	@Bean
-	public JdbcCursorItemWriter<Product> jdbcCursorItemReader() {
-		
-		
-		
-	}
-	
-    
 //    @Bean
 //    public Step step1() throws Exception {
 //        return this.stepBuilderFactory.get("chunkBasedStep1")
@@ -163,9 +138,39 @@ public class BatchConfiguration {
 ////                .reader(flatFileItemReader())
 ////                .reader(jdbcCursorItemReader())
 //                .reader(jdbcPagingItemReader())
-//                .writer(flatFileItemWriter()).build();
+//                .writer(new ItemWriter<Product>() {
+//                
+//                @Override
+//                public void write(List<? extends Product> items) throws Exception {
+//        		System.out.println("Chunk processing started");
+//        		items.forEach(System.out::println);
+//        		System.out.println("Chunk processing ended");
+//        	}
+//        }).build();
 //    }
-//
+	
+	@Bean
+	public JdbcBatchItemWriter<Product> jdbcBatchItemWriter() {
+		JdbcBatchItemWriter<Product> itemWriter = new JdbcBatchItemWriter<>();
+		itemWriter.setDataSource(dataSource);
+		itemWriter.setSql("insert into PRODUCT_DETAILS values (?,?,?,?)");
+		itemWriter.setItemPreparedStatementSetter(new ProductItemPreparedStatementSetter());
+		return itemWriter;
+		
+		
+	}
+	
+    
+    @Bean
+    public Step step1() throws Exception {
+        return this.stepBuilderFactory.get("chunkBasedStep1")
+                .<Product, Product>chunk(3)
+//                .reader(flatFileItemReader())
+//                .reader(jdbcCursorItemReader())
+                .reader(jdbcPagingItemReader())
+                .writer(jdbcBatchItemWriter()).build();
+    }
+
     @Bean
     public Job firstJob() throws Exception {
         return this.jobBuilderFactory.get("job1")
