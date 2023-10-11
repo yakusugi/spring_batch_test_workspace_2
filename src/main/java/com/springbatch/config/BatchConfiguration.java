@@ -30,6 +30,7 @@ import com.springbatch.domain.ProductFieldSetMapper;
 import com.springbatch.domain.ProductRowMapper;
 
 import org.springframework.batch.item.database.JdbcCursorItemReader;
+import org.springframework.batch.item.database.JdbcCursorItemWriter;
 import org.springframework.batch.item.database.JdbcPagingItemReader;
 import org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean;
 
