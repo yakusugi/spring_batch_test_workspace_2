@@ -129,24 +129,6 @@ public class BatchConfiguration {
 	
 	
 
-//    @Bean
-//    public Step step1() throws Exception {
-//        return this.stepBuilderFactory.get("chunkBasedStep1")
-//                .<Product, Product>chunk(3)
-////                .reader(flatFileItemReader())
-////                .reader(jdbcCursorItemReader())
-//                .reader(jdbcPagingItemReader())
-//                .writer(new ItemWriter<Product>() {
-//                
-//                @Override
-//                public void write(List<? extends Product> items) throws Exception {
-//        		System.out.println("Chunk processing started");
-//        		items.forEach(System.out::println);
-//        		System.out.println("Chunk processing ended");
-//        	}
-//        }).build();
-//    }
-    
     @Bean
     public Step step1() throws Exception {
         return this.stepBuilderFactory.get("chunkBasedStep1")
@@ -154,9 +136,35 @@ public class BatchConfiguration {
 //                .reader(flatFileItemReader())
 //                .reader(jdbcCursorItemReader())
                 .reader(jdbcPagingItemReader())
-                .writer(flatFileItemWriter()).build();
+                .writer(new ItemWriter<Product>() {
+                
+                @Override
+                public void write(List<? extends Product> items) throws Exception {
+        		System.out.println("Chunk processing started");
+        		items.forEach(System.out::println);
+        		System.out.println("Chunk processing ended");
+        	}
+        }).build();
     }
-
+	
+	@Bean
+	public JdbcCursorItemWriter<Product> jdbcCursorItemReader() {
+		
+		
+		
+	}
+	
+    
+//    @Bean
+//    public Step step1() throws Exception {
+//        return this.stepBuilderFactory.get("chunkBasedStep1")
+//                .<Product, Product>chunk(3)
+////                .reader(flatFileItemReader())
+////                .reader(jdbcCursorItemReader())
+//                .reader(jdbcPagingItemReader())
+//                .writer(flatFileItemWriter()).build();
+//    }
+//
     @Bean
     public Job firstJob() throws Exception {
         return this.jobBuilderFactory.get("job1")
