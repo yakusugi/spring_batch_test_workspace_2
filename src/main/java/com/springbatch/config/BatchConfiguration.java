@@ -153,7 +153,7 @@ public class BatchConfiguration {
 	public JdbcBatchItemWriter<Product> jdbcBatchItemWriter() {
 		JdbcBatchItemWriter<Product> itemWriter = new JdbcBatchItemWriter<>();
 		itemWriter.setDataSource(dataSource);
-		itemWriter.setSql("insert into product_details_output values (?,?,?,?)");
+		itemWriter.setSql("insert into PRODUCT_DETAILS_OUTPUT values (?,?,?,?)");
 		itemWriter.setItemPreparedStatementSetter(new ProductItemPreparedStatementSetter());
 		return itemWriter;
 	}
