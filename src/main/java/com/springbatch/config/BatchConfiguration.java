@@ -34,6 +34,8 @@ import org.springframework.batch.item.database.JdbcCursorItemReader;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;	
 import org.springframework.batch.item.database.JdbcPagingItemReader;
 import org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean;
+import org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider;
+
 
 
 @Configuration
@@ -149,12 +151,23 @@ public class BatchConfiguration {
 //        }).build();
 //    }
 	
+	// writing part 1
+//	@Bean
+//	public JdbcBatchItemWriter<Product> jdbcBatchItemWriter() {
+//		JdbcBatchItemWriter<Product> itemWriter = new JdbcBatchItemWriter<>();
+//		itemWriter.setDataSource(dataSource);
+//		itemWriter.setSql("insert into PRODUCT_DETAILS_OUTPUT values (?,?,?,?)");
+//		itemWriter.setItemPreparedStatementSetter(new ProductItemPreparedStatementSetter());
+//		return itemWriter;
+//	}
+	
+	// writing part 2
 	@Bean
 	public JdbcBatchItemWriter<Product> jdbcBatchItemWriter() {
 		JdbcBatchItemWriter<Product> itemWriter = new JdbcBatchItemWriter<>();
 		itemWriter.setDataSource(dataSource);
-		itemWriter.setSql("insert into PRODUCT_DETAILS_OUTPUT values (?,?,?,?)");
-		itemWriter.setItemPreparedStatementSetter(new ProductItemPreparedStatementSetter());
+		itemWriter.setSql("insert into PRODUCT_DETAILS_OUTPUT values (:productId, :productName, :productCategory, :productPrice)");
+		itemWriter.setItemSqlParameterSourceProvider(new BeanPropertyItemSqlParameterSourceProvider());
 		return itemWriter;
 	}
 	
