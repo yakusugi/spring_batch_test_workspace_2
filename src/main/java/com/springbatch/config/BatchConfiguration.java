@@ -11,6 +11,7 @@ import org.springframework.batch.core.configuration.annotation.EnableBatchProces
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
@@ -47,68 +48,15 @@ public class BatchConfiguration {
     
     @Autowired
     public DataSource dataSource;
-
-//    @Bean
-//    public ItemReader<String> itemReader() {
-//        List<String> productList = new ArrayList<>();
-//        productList.add("Product 1");
-//        productList.add("Product 2");
-//        productList.add("Product 3");
-//        productList.add("Product 4");
-//        productList.add("Product 5");
-//        productList.add("Product 6");
-//        productList.add("Product 7");
-//        productList.add("Product 8");
-//        
-//        return new ProductNameItemReader(productList);
-//    }
-    
-	@Bean
-	public ItemReader<UserSpending> flatFileItemReader() {
-		FlatFileItemReader<UserSpending> itemReader = new FlatFileItemReader<>();
-		itemReader.setLinesToSkip(1);
-		itemReader.setResource(new ClassPathResource("/data/Product_Details.csv"));
-
-		DefaultLineMapper<UserSpending> lineMapper = new DefaultLineMapper<>();
-
-		DelimitedLineTokenizer lineTokenizer = new DelimitedLineTokenizer();
-		lineTokenizer.setNames("product_id", "product_name", "product_category", "product_price");
-
-		lineMapper.setLineTokenizer(lineTokenizer);
-		lineMapper.setFieldSetMapper(new UserSpendingFieldSetMapper());
-
-		itemReader.setLineMapper(lineMapper);
-
-		return itemReader;
-	}
 	
 	@Bean
-	public ItemReader<UserSpending> jdbcCursorItemReader() {
+	public ItemReader<UserSpending> jdbcCursorItemReader(@Value("#{jobParameters['storeName']}") String storeName) {
 		JdbcCursorItemReader<UserSpending> itemReader = new JdbcCursorItemReader<>();
 		itemReader.setDataSource(dataSource);
-		itemReader.setSql("select * from budget_tracker_db.user_spending where email = 'masterplan_life@protonmail.com' order by spending_id");
+		itemReader.setSql("select * from budget_tracker_db.user_spending where estore_name = '\" + storeName + \"' order by spending_id");
 		itemReader.setRowMapper(new UserSpendingRowMapper());
 		return itemReader;
-		
 	}
-	
-//	@Bean
-//	public ItemReader<UserSpending> jdbcPagingItemReader() throws Exception {
-//		JdbcPagingItemReader<UserSpending> itemReader = new JdbcPagingItemReader<>();
-//		itemReader.setDataSource(dataSource);
-//		
-//		SqlPagingQueryProviderFactoryBean factory = new SqlPagingQueryProviderFactoryBean();
-//		factory.setDataSource(dataSource);
-//		factory.setSelectClause("select PRODUCT_ID, PRODUCT_NAME, PRODUCT_CATEGORY, PRODUCT_PRICE");
-//		factory.setFromClause("from PRODUCT_DETAILS");
-//		factory.setSortKey("PRODUCT_ID");
-//		
-//		itemReader.setQueryProvider(factory.getObject());
-//		itemReader.setRowMapper(new UserSpendingRowMapper());
-//		itemReader.setPageSize(2);
-//		
-//		return itemReader;
-//	}
 	
 	@Bean
 	public ItemWriter<UserSpending> flatFileItemWriter() throws Exception {
@@ -130,12 +78,10 @@ public class BatchConfiguration {
 
 	//for reading
     @Bean
-    public Step step1() throws Exception {
+    public Step step1(@Value("#{jobParameters['storeName']}") String storeName)  throws Exception {
         return this.stepBuilderFactory.get("chunkBasedStep1")
                 .<UserSpending, UserSpending>chunk(3)
-//                .reader(flatFileItemReader())
-                .reader(jdbcCursorItemReader())
-//                .reader(jdbcPagingItemReader())
+                .reader(jdbcCursorItemReader(storeName))
                 .writer(new ItemWriter<UserSpending>() {
                 
                 @Override
@@ -146,34 +92,11 @@ public class BatchConfiguration {
         	}
         }).build();
     }
-    
-	
-	
-//    @Bean
-//    public Step step1() throws Exception {
-//        return this.stepBuilderFactory.get("chunkBasedStep1")
-//                .<UserSpending, UserSpending>chunk(3)
-//                  .reader(flatFileItemReader())
-//                  .reader(jdbcCursorItemReader())
-//                .reader(jdbcPagingItemReader())
-//                .writer(flatFileItemWriter()).build();
-//    }
-   
-    // for writing to a csv file
-//    @Bean
-//    public Step step1() throws Exception {
-//        return this.stepBuilderFactory.get("chunkBasedStep1")
-//                .<UserSpending, UserSpending>chunk(3)
-//                  .reader(flatFileItemReader())
-////                  .reader(jdbcCursorItemReader())
-//                .reader(jdbcCursorItemReader())
-//                .writer(flatFileItemWriter()).build();
-//    }
 
     @Bean
-    public Job firstJob() throws Exception {
+    public Job firstJob(@Value("#{jobParameters['storeName']}") String storeName) throws Exception {
         return this.jobBuilderFactory.get("job1")
-                .start(step1())
+                .start(step1(storeName))
                 .build();
     }
 }
