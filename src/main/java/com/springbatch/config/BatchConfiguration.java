@@ -2,6 +2,8 @@ package com.springbatch.config;
 
 import com.springbatch.domain.UserSpending;
 import com.springbatch.domain.UserSpendingRowMapper;
+import com.springbatch.validation.EmailValidation;
+
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
@@ -40,10 +42,21 @@ public class BatchConfiguration {
 
     @Bean
     @JobScope
-    public ItemStreamReader<UserSpending> jdbcCursorItemReader(@Value("#{jobParameters['storeName']}") String storeName) {
+    public ItemStreamReader<UserSpending> jdbcCursorItemReader(
+    		@Value("#{jobParameters['storeName']}") String storeName,
+    		@Value("#{jobParameters['email']}") String email
+    		) {
+    	// Validate the email using EmailValidation class
+//        EmailValidation emailValidation = new EmailValidation();
+//        if (!emailValidation.isEmailValid(email)) {
+//            // Handle invalid email (e.g., exit the job, throw an exception, etc.)
+//            throw new RuntimeException("Invalid email provided: " + email);
+//        }
+    	
         JdbcCursorItemReader<UserSpending> itemReader = new JdbcCursorItemReader<>();
         itemReader.setDataSource(dataSource);
-        itemReader.setSql("select * from user_spending where store_name = '" + storeName + "' order by spending_id");
+        //todo: fix sql
+        itemReader.setSql("select * from user_spending where store_name = '" + storeName + "' and email = '" + email + "' order by spending_id");
         itemReader.setRowMapper(new UserSpendingRowMapper());
         return itemReader;
     }
@@ -52,7 +65,7 @@ public class BatchConfiguration {
     @JobScope
     public ItemStreamWriter<UserSpending> flatFileItemWriter() throws Exception {
         FlatFileItemWriter<UserSpending> itemWriter = new FlatFileItemWriter<>();
-        itemWriter.setResource(new FileSystemResource("src/main/resources/data/Product_Details_Output3.csv"));
+        itemWriter.setResource(new FileSystemResource("src/main/resources/data/Product_Details_Output4.csv"));
 
         DelimitedLineAggregator<UserSpending> lineAggregator = new DelimitedLineAggregator<>();
         lineAggregator.setDelimiter(",");

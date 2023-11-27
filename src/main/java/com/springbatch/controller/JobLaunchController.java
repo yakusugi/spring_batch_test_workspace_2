@@ -20,10 +20,16 @@ public class JobLaunchController {
 	@Qualifier("firstJob")
 	private Job job;
 	
-	@GetMapping("/launchJob/{storeName}")
-	public void handle(@PathVariable("storeName") String storeName) throws Exception {
+	@GetMapping("/launchJob/{storeName}/{email}")
+	public void handle(
+			@PathVariable("storeName") String storeName,
+			@PathVariable("email") String email
+			) throws Exception {
 		
-		JobParameters jobParameters = new JobParametersBuilder().addString("storeName", storeName).toJobParameters();
+		JobParameters jobParameters = new JobParametersBuilder()
+				.addString("storeName", storeName)
+				.addString("email", email)
+				.toJobParameters();
 		jobLauncher.run(job, jobParameters);
 		
 	}
