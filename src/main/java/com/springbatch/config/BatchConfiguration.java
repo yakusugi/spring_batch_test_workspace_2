@@ -2,6 +2,7 @@ package com.springbatch.config;
 
 import com.springbatch.domain.UserSpending;
 import com.springbatch.domain.UserSpendingRowMapper;
+import com.springbatch.tasklet.ExitCodeCheckingTasklet;
 import com.springbatch.validation.EmailValidation;
 
 import org.springframework.batch.core.Job;
@@ -10,6 +11,7 @@ import org.springframework.batch.core.configuration.annotation.EnableBatchProces
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.JobScope;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemStreamReader;
 import org.springframework.batch.item.ItemStreamWriter;
@@ -22,8 +24,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.batch.item.ItemStreamReader;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.stream.Collectors;
+
+import javax.batch.api.chunk.ItemProcessor;
 import javax.sql.DataSource;
 
 
@@ -39,33 +50,51 @@ public class BatchConfiguration {
 
     @Autowired
     public DataSource dataSource;
-
+    
+    //Validation check (currency exist)
     @Bean
     @JobScope
-    public ItemStreamReader<UserSpending> jdbcCursorItemReader(
-    		@Value("#{jobParameters['storeName']}") String storeName,
-    		@Value("#{jobParameters['email']}") String email
+    public ItemStreamReader<UserSpending> currencyExistingValidation(
+    		@Value("#{jobParameters['email']}") String email,
+    		@Value("#{jobParameters['sourceCurrencyCode']}") String sourceCurrencyCode,
+    		@Value("#{jobParameters['targetCurrencyCode']}") String targetCurrencyCode
     		) {
-    	// Validate the email using EmailValidation class
-//        EmailValidation emailValidation = new EmailValidation();
-//        if (!emailValidation.isEmailValid(email)) {
-//            // Handle invalid email (e.g., exit the job, throw an exception, etc.)
-//            throw new RuntimeException("Invalid email provided: " + email);
-//        }
     	
+//        JdbcCursorItemReader<UserSpending> itemReader = new JdbcCursorItemReader<>();
+//        itemReader.setDataSource(dataSource);
+//        //todo: fix sql
+//        itemReader.setSql("select * from user_spending where email = '" + email + "' and currency_code = '" + sourceCurrencyCode + "' or currency_code = '" + targetCurrencyCode + "' order by spending_id");
+//        itemReader.setRowMapper(new UserSpendingRowMapper());
+//        return itemReader;
+        
         JdbcCursorItemReader<UserSpending> itemReader = new JdbcCursorItemReader<>();
         itemReader.setDataSource(dataSource);
-        //todo: fix sql
-        itemReader.setSql("select * from user_spending where store_name = '" + storeName + "' and email = '" + email + "' order by spending_id");
+        itemReader.setSql(getSqlFromFile("src/main/resources/data/sql/user_spending_query.sql", email, sourceCurrencyCode, targetCurrencyCode));
         itemReader.setRowMapper(new UserSpendingRowMapper());
         return itemReader;
     }
+    
+    private String getSqlFromFile(String filePath, String email, String sourceCurrencyCode, String targetCurrencyCode) {
+        // Load SQL from file
+        Resource resource = new ClassPathResource(filePath);
+        String sqlTemplate = null;
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(resource.getInputStream()))) {
+            sqlTemplate = reader.lines().collect(Collectors.joining(System.lineSeparator()));
+        } catch (IOException e) {
+            // Handle exception
+            e.printStackTrace();
+        }
 
+        // Replace placeholders with actual values
+        return String.format(sqlTemplate, email, sourceCurrencyCode, targetCurrencyCode);
+    }
+    
+    
     @Bean
     @JobScope
     public ItemStreamWriter<UserSpending> flatFileItemWriter() throws Exception {
         FlatFileItemWriter<UserSpending> itemWriter = new FlatFileItemWriter<>();
-        itemWriter.setResource(new FileSystemResource("src/main/resources/data/Product_Details_Output4.csv"));
+        itemWriter.setResource(new FileSystemResource("src/main/resources/data/Product_Details_Output8.csv"));
 
         DelimitedLineAggregator<UserSpending> lineAggregator = new DelimitedLineAggregator<>();
         lineAggregator.setDelimiter(",");
@@ -84,12 +113,18 @@ public class BatchConfiguration {
     @Bean
     @JobScope
     public Step step1(ItemReader<UserSpending> reader, ItemWriter<UserSpending> writer) {
-        return this.stepBuilderFactory.get("step1")
+    	TaskletStep step = this.stepBuilderFactory.get("step1")
                 .<UserSpending, UserSpending>chunk(3)
-                .reader(reader)
+                .reader(currencyExistingValidation(null, null, null))
                 .writer(writer)
                 .build();
+        
+        step.setTasklet(new ExitCodeCheckingTasklet(step.getTasklet()));
+
+        return step;
     }
+    
+    
 
     @Bean
     public Job firstJob(Step step1) {

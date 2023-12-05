@@ -20,15 +20,17 @@ public class JobLaunchController {
 	@Qualifier("firstJob")
 	private Job job;
 	
-	@GetMapping("/launchJob/{storeName}/{email}")
+	@GetMapping("/launchJob/{email}/{sourceCurrencyCode}/{targetCurrencyCode}")
 	public void handle(
-			@PathVariable("storeName") String storeName,
-			@PathVariable("email") String email
+			@PathVariable("email") String email,
+			@PathVariable("sourceCurrencyCode") String sourceCurrencyCode,
+			@PathVariable("targetCurrencyCode") String targetCurrencyCode
 			) throws Exception {
 		
 		JobParameters jobParameters = new JobParametersBuilder()
-				.addString("storeName", storeName)
 				.addString("email", email)
+				.addString("sourceCurrencyCode", sourceCurrencyCode)
+				.addString("targetCurrencyCode", targetCurrencyCode)
 				.toJobParameters();
 		jobLauncher.run(job, jobParameters);
 		
