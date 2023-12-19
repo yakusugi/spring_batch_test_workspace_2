@@ -1,5 +1,5 @@
-SELECT SUM(price) AS total_sum
+SELECT *
 FROM user_spending
-WHERE spending_date BETWEEN '%d' AND '%d'
+WHERE spending_date BETWEEN '%s' AND '%s'
 AND currency_code = '%s'
 AND email = '%s'
