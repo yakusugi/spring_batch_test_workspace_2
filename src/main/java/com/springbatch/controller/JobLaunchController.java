@@ -1,5 +1,8 @@
 package com.springbatch.controller;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
@@ -20,17 +23,25 @@ public class JobLaunchController {
 	@Qualifier("firstJob")
 	private Job job;
 	
-	@GetMapping("/launchJob/{email}/{sourceCurrencyCode}/{targetCurrencyCode}")
+	@GetMapping("/launchJob/{email}/{sourceCurrencyCode}/{targetCurrencyCode}/{dateFrom}/{dateTo}")
 	public void handle(
 			@PathVariable("email") String email,
 			@PathVariable("sourceCurrencyCode") String sourceCurrencyCode,
-			@PathVariable("targetCurrencyCode") String targetCurrencyCode
+			@PathVariable("targetCurrencyCode") String targetCurrencyCode,
+			@PathVariable("dateFrom") String dateFromString,
+	        @PathVariable("dateTo") String dateToString
 			) throws Exception {
+		
+		SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+	    Date dateFrom = formatter.parse(dateFromString);
+	    Date dateTo = formatter.parse(dateToString);
 		
 		JobParameters jobParameters = new JobParametersBuilder()
 				.addString("email", email)
 				.addString("sourceCurrencyCode", sourceCurrencyCode)
 				.addString("targetCurrencyCode", targetCurrencyCode)
+				.addDate("dateFrom", dateFrom)
+				.addDate("dateTo", dateTo)
 				.toJobParameters();
 		jobLauncher.run(job, jobParameters);
 		
