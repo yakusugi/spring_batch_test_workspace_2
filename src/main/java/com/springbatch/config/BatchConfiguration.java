@@ -2,7 +2,9 @@ package com.springbatch.config;
 
 import com.springbatch.domain.UserSpending;
 import com.springbatch.domain.UserSpendingRowMapper;
+import com.springbatch.tasklet.CurrencyExchangeApiTasklet;
 import com.springbatch.tasklet.ExitCodeCheckingTasklet;
+import com.springbatch.tasklet.TotalPriceCalculatorTasklet;
 import com.springbatch.validation.EmailValidation;
 
 import org.springframework.batch.core.Job;
@@ -62,7 +64,8 @@ public class BatchConfiguration {
 	// Validation check (currency exist)
 	@Bean
 	@JobScope
-	public ItemStreamReader<UserSpending> currencyExistingValidation(@Value("#{jobParameters['email']}") String email,
+	public ItemStreamReader<UserSpending> currencyExistingValidation(
+			@Value("#{jobParameters['email']}") String email,
 			@Value("#{jobParameters['sourceCurrencyCode']}") String sourceCurrencyCode,
 			@Value("#{jobParameters['targetCurrencyCode']}") String targetCurrencyCode) {
 
@@ -93,7 +96,7 @@ public class BatchConfiguration {
 	// currency calc and sum
 	@Bean
 	@JobScope
-	public ItemStreamReader<UserSpending> currencyCalcSum(@Value("#{jobParameters['email']}") String email,
+	public ItemStreamReader<UserSpending> targetCurrencyCsv(@Value("#{jobParameters['email']}") String email,
 			@Value("#{jobParameters['dateFrom']}") Date dateFrom, @Value("#{jobParameters['dateTo']}") Date dateTo,
 			@Value("#{jobParameters['targetCurrencyCode']}") String targetCurrencyCode
 
@@ -101,12 +104,12 @@ public class BatchConfiguration {
 
 		JdbcCursorItemReader<UserSpending> itemReader = new JdbcCursorItemReader<>();
 		itemReader.setDataSource(dataSource);
-		itemReader.setSql(getSqlFromFileForCalcSum("sql/calc_sum.sql", dateFrom, dateTo, targetCurrencyCode, email));
+		itemReader.setSql(getSqlFromFileTargetCurrency("sql/calc_sum.sql", dateFrom, dateTo, targetCurrencyCode, email));
 		itemReader.setRowMapper(new UserSpendingRowMapper());
 		return itemReader;
 	}
 
-	private String getSqlFromFileForCalcSum(String filePath, Date dateFrom, Date dateTo, String targetCurrencyCode,
+	private String getSqlFromFileTargetCurrency(String filePath, Date dateFrom, Date dateTo, String targetCurrencyCode,
 			String email) {
 		// Format dates to Strings
 		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd"); // Adjust format as needed
@@ -174,6 +177,21 @@ public class BatchConfiguration {
 
 	    return reader;
 	}
+	
+	@Bean
+	public Step calculateTotalPriceStep() {
+	    return stepBuilderFactory.get("calculateTotalPriceStep")
+	            .tasklet(new TotalPriceCalculatorTasklet())
+	            .build();
+	}
+	
+	@Bean
+	public Step currencyExchangeStep() {
+	    return stepBuilderFactory.get("currencyExchangeStep")
+	            .tasklet(new CurrencyExchangeApiTasklet())
+	            .build();
+	}
+
 
 	// for reading
 	@Bean
@@ -188,7 +206,7 @@ public class BatchConfiguration {
 
 	@Bean
 	@JobScope
-	public Step step2(@Qualifier("currencyCalcSum") ItemReader<UserSpending> reader, ItemWriter<UserSpending> writer) {
+	public Step step2(@Qualifier("targetCurrencyCsv") ItemReader<UserSpending> reader, ItemWriter<UserSpending> writer) {
 		return stepBuilderFactory.get("step2").<UserSpending, UserSpending>chunk(3)
 				.reader(reader)
 				.writer(writer)
@@ -210,11 +228,13 @@ public class BatchConfiguration {
 
 
 	@Bean
-	public Job firstJob(Step step1, Step step2, Step step3) {
+	public Job firstJob(Step step1, Step step2, Step step3, Step calculateTotalPriceStep, Step currencyExchangeStep) {
 		return this.jobBuilderFactory.get("job1")
 				.start(step1)
 				.next(step2)
 				.next(step3)
+				.next(calculateTotalPriceStep)
+				.next(currencyExchangeStep)
 				.build();
 	}
 }
