@@ -4,7 +4,6 @@ import com.springbatch.domain.UserSpending;
 import com.springbatch.domain.UserSpendingRowMapper;
 import com.springbatch.tasklet.CurrencyExchangeApiTasklet;
 import com.springbatch.tasklet.ExitCodeCheckingTasklet;
-import com.springbatch.tasklet.TotalPriceCalculatorTasklet;
 import com.springbatch.validation.EmailValidation;
 
 import org.springframework.batch.core.Job;
