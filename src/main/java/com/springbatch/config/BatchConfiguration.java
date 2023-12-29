@@ -178,12 +178,6 @@ public class BatchConfiguration {
 	    return reader;
 	}
 	
-	@Bean
-	public Step calculateTotalPriceStep() {
-	    return stepBuilderFactory.get("calculateTotalPriceStep")
-	            .tasklet(new TotalPriceCalculatorTasklet())
-	            .build();
-	}
 	
 	@Bean
 	public Step currencyExchangeStep() {
@@ -228,12 +222,11 @@ public class BatchConfiguration {
 
 
 	@Bean
-	public Job firstJob(Step step1, Step step2, Step step3, Step calculateTotalPriceStep, Step currencyExchangeStep) {
+	public Job firstJob(Step step1, Step step2, Step step3, Step currencyExchangeStep) {
 		return this.jobBuilderFactory.get("job1")
 				.start(step1)
 				.next(step2)
 				.next(step3)
-				.next(calculateTotalPriceStep)
 				.next(currencyExchangeStep)
 				.build();
 	}
