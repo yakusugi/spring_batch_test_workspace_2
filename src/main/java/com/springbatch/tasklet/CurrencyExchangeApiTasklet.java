@@ -47,6 +47,7 @@ public class CurrencyExchangeApiTasklet implements Tasklet {
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
         String sourceCurrencyCode = (String) chunkContext.getStepContext().getJobParameters().get("sourceCurrencyCode");
         String targetCurrencyCode = (String) chunkContext.getStepContext().getJobParameters().get("targetCurrencyCode");
+        Double convertedPrice = 0.0;
 
         // Setting up the reader for the CSV file
         FlatFileItemReader<UserSpending> reader = new FlatFileItemReader<>();
@@ -58,12 +59,19 @@ public class CurrencyExchangeApiTasklet implements Tasklet {
         while ((userSpending = reader.read()) != null) {
             // Call the API for each record
             Double conversionRate = getConversionRate(userSpending.getSpendingDate(), sourceCurrencyCode, targetCurrencyCode);
-            double convertedPrice = userSpending.getPrice() * conversionRate;
+            convertedPrice = userSpending.getPrice() * conversionRate;
             
             System.out.println(String.format("Original: %f, Converted: %f", userSpending.getPrice(), convertedPrice));
         }
 
         reader.close();
+        
+        chunkContext.getStepContext()
+			.getStepExecution()
+			.getJobExecution()
+			.getExecutionContext()
+			.put("convertedPrice", convertedPrice);
+        
         return RepeatStatus.FINISHED;
     }
 
@@ -72,12 +80,7 @@ public class CurrencyExchangeApiTasklet implements Tasklet {
         String formattedDate = dateFormat.format(date);
 
         String url = String.format("https://api.apilayer.com/exchangerates_data/%s?symbols=%s&base=%s", 
-                                  formattedDate, targetCurrency, sourceCurrency);
-
-        Request request = new Request.Builder()
-            .url(url)
-            .addHeader("apikey", apiKey)
-            .build();
+                                  formattedDate, sourceCurrency, targetCurrency);
         
         HttpHeaders headers = new HttpHeaders();
         headers.set("apikey", apiKey);
@@ -86,11 +89,17 @@ public class CurrencyExchangeApiTasklet implements Tasklet {
 		
 		RestTemplate restTemplate = new RestTemplate();
 		ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+		
+		// Log the API response
+		System.out.println("API Response: " + response.getBody());
 
 		ObjectMapper objectMapper = new ObjectMapper();
 		JsonNode rootNode = objectMapper.readTree(response.getBody());
 		JsonNode ratesNode = rootNode.path("rates");
 		double conversionRate = ratesNode.path(sourceCurrency).asDouble();
+		System.out.println(String.format("SourceCurrencyCode: %s, TargetCurrencyCode: %s  Converted Rate: %f", sourceCurrency, targetCurrency, conversionRate));
+		
+		
 
 		return conversionRate;
 	
