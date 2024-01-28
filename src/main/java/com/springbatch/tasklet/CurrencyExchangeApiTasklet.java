@@ -6,6 +6,7 @@ import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.propertyeditors.CustomDateEditor;
+import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -30,6 +31,8 @@ import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.core.io.FileSystemResource;
 import com.springbatch.domain.UserSpending;
+import com.springbatch.utility.FileNameSettingListener;
+
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -42,6 +45,14 @@ import java.util.Date;
 public class CurrencyExchangeApiTasklet implements Tasklet {
 
     private final String apiKey = "GHSOg6VcH44yR9oKUQBm19JPhoGbq0mD";
+    
+    @Value("#{jobExecutionContext['csvFileName']}")
+    private String csvFileName;
+    
+//    @Bean
+//    public FileNameSettingListener fileNameSettingListener() {
+//        return new FileNameSettingListener();
+//    }
 
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
@@ -51,7 +62,8 @@ public class CurrencyExchangeApiTasklet implements Tasklet {
 
         // Setting up the reader for the CSV file
         FlatFileItemReader<UserSpending> reader = new FlatFileItemReader<>();
-        reader.setResource(new FileSystemResource("src/main/resources/data/Product_Details_Output9.csv"));
+//        reader.setResource(new FileSystemResource("src/main/resources/data/Product_Details_Output9.csv"));
+        reader.setResource(new FileSystemResource(csvFileName));
         reader.setLineMapper(getLineMapper());
         reader.open(chunkContext.getStepContext().getStepExecution().getExecutionContext());
 

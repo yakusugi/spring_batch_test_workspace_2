@@ -1,9 +1,12 @@
 package com.springbatch.config;
 
+
+
 import com.springbatch.domain.UserSpending;
 import com.springbatch.domain.UserSpendingRowMapper;
 import com.springbatch.tasklet.CurrencyExchangeApiTasklet;
 import com.springbatch.tasklet.ExitCodeCheckingTasklet;
+import com.springbatch.utility.FileNameSettingListener;
 import com.springbatch.validation.EmailValidation;
 
 import org.springframework.batch.core.Job;
@@ -45,6 +48,7 @@ import java.util.Date;
 import java.util.stream.Collectors;
 
 import javax.batch.api.chunk.ItemProcessor;
+import javax.batch.runtime.StepExecution;
 import javax.sql.DataSource;
 
 @Configuration
@@ -132,9 +136,20 @@ public class BatchConfiguration {
 
 	@Bean
 	@JobScope
-	public ItemStreamWriter<UserSpending> flatFileItemWriter() throws Exception {
+	public ItemStreamWriter<UserSpending> flatFileItemWriter(FileNameSettingListener fileNameSettingListener) throws Exception {
 		FlatFileItemWriter<UserSpending> itemWriter = new FlatFileItemWriter<>();
-		itemWriter.setResource(new FileSystemResource("src/main/resources/data/Product_Details_Output9.csv"));
+//		itemWriter.setResource(new FileSystemResource("src/main/resources/data/Product_Details_Output9.csv"));
+		
+		// Format the current date and time
+//        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
+//        String formattedDate = dateFormat.format(new Date());
+//        String fileName = "src/main/resources/data/Product_Details_" + formattedDate + ".csv";
+		
+		String fileName = fileNameSettingListener.getFileName();
+	    itemWriter.setResource(new FileSystemResource(fileName));
+        
+     // Set the resource to a new file with the formatted date in its name
+//        itemWriter.setResource(new FileSystemResource("src/main/resources/data/Product_Details_" + formattedDate + ".csv"));
 
 		DelimitedLineAggregator<UserSpending> lineAggregator = new DelimitedLineAggregator<>();
 		lineAggregator.setDelimiter(",");
@@ -146,6 +161,8 @@ public class BatchConfiguration {
 		lineAggregator.setFieldExtractor(fieldExtractor);
 
 		itemWriter.setLineAggregator(lineAggregator);
+		
+//		stepExecution.getExecutionContext().putString("csvFileName", fileName);
 
 		return itemWriter;
 	}
@@ -190,10 +207,11 @@ public class BatchConfiguration {
 	@Bean
 	@JobScope
 	public Step step1(@Qualifier("currencyExistingValidation") ItemReader<UserSpending> reader,
-			ItemWriter<UserSpending> writer) {
+			ItemWriter<UserSpending> writer, FileNameSettingListener fileNameSettingListener) {
 		return stepBuilderFactory.get("step1").<UserSpending, UserSpending>chunk(3)
 				.reader(reader)
 				.writer(writer)
+				.listener(fileNameSettingListener)
 				.build();
 	}
 
